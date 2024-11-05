@@ -1,0 +1,128 @@
+---
+title: Reference data preparation for SwarmTCR"
+author: "Maia Bennett-Boehm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("../TCRPaired/util/library.R")
+source("../TCRPaired/util/processing.R")
+source("../TCRPaired/util/filtering.R")
+source("../TCRPaired/util/formatting.R")
+source("./util/data-inputs.R")
+library(rstudioapi)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Reference data preparation for SwarmTCR
+
+This document describes the steps to prepare reference data for use with SwarmTCR. The reference data should be in the form of a data frame with columns for the following variables:
+
+- Clone ID (unique identifier for each receptor)
+
+- CDR sequences (CDR1a, CDR2a, CDR2.5a, CDR3a, CDR1b, CDR2b, CDR2.5b, CDR3b)
+
+- Epitope (the antigen specificity of the receptor)
+
+If not already in this format, the reference data can be formatted using the functions provided in the TCRPaired repository. 
+
+
+First, a number of variables need to be set for the reference data preparation. These include the minimum number of receptors for an epitope to be considered, the train/test split proportions, the number of folds for cross-validation, and the output path for the formatted reference data. This also includes the option to set the proportion of negative reference data to include based on the positive reference data.
+
+```{r set-variables}
+
+# Minumum number of receptors for an epitope to be considered 
+count.threshold <- 25
+
+# Train/test split variables, including split proportion and number of folds for cross-validation (highly recommended)
+ref.prop = 0.3
+train.prop = 0.7
+test.prop = 0.3
+n.folds = 25
+
+# Optional parameter for the upper limit proportion of negative reference data to include based on positive reference in train/test split (if there are not that many negative references, use all available)
+neg.prop = 10
+
+# Output path for formatted reference data
+out.path <- "./reference-data/high-confidence/"
+dir.create(out.path, showWarnings = FALSE, recursive = TRUE)
+
+```
+
+
+Then, the positive data can be imported. The positive reference data should be a data frame with the columns described above. Separate negative reference data can be a larger pool of reference data, if desired, and should also be in the same format.
+
+```{r load-data}
+
+# Import positive reference data
+positive.reference <- read.csv("./reference-data/high-confidence-paired-sequences.csv")
+
+# Import larger pool of reference data for negative reference, if wanted
+negative.reference <- read.csv("./reference-data/all-distinct-cdr-paired-sequences.csv")
+
+```
+
+Next, the epitopes elligble for SwarmTCR pretraining are selected based on the minimum number of receptors for an epitope to be considered. The number of receptors can be any number, but keep in mind the performance of SwarmTCR may decrease with fewer receptors.
+
+```{r select-epitopes}
+
+# Fetch the epitopes for train/test validation from reference dataset based on receptor count
+epitopes <- positive.reference %>% fetchEpitopes("Epitope", count.threshold)
+
+write.csv(epitopes, paste0(out.path, "epitopes.csv"), row.names = FALSE)
+
+```
+
+Optionally, negative reference data can be generated from a wider pool of reference data. This can be done by specifying the number of negative sequences to generate per epitope in the positive dataset, the source of the negative data to exclude, and the target epitope(s) for the negative data. The negative data generator assigns a decoy epitope, gene, and species to the receptors, which is not needed for SwarmTCR. As such, these columns are removed from the negative data. The full functionality of the negative data generator is described in the TCRPaired repository.
+
+```{r prepare-negative-reference}
+
+# Here, we generate a total of 1,500 negative sequences per epitope in the positive dataset from a wider pool of reference data, excluding cross-reactive data
+n.negative <- 1500
+exclude.source <- "chan"
+target.epitopes <- epitopes %>% pull(Epitope)
+
+negative.data <- generateNegatives(negative.reference, n.negative, target.epitope = NULL, target.epitopes = target.epitopes, exclude.source = exclude.source, exclude.all.epitopes = FALSE)
+
+# The negative data generater assigns a decoy epitope, gene, and species to the receptors, which is not needed for SwarmTCR
+negative.data <- negative.data %>% 
+    mutate(Epitope = True.epitope,
+        Epitope.gene = True.epitope.gene,
+        Epitope.species = True.epitope.species) %>%
+    select(-c(True.epitope, True.epitope.gene, True.epitope.species))
+
+neg.gen.out.path <- "./reference-data/high-confidence-generated-negatives/"
+dir.create(neg.gen.out.path, showWarnings = FALSE, recursive = TRUE)
+write.csv(negative.data, paste0(neg.gen.out.path, "negative-reference-data.csv"), row.names = FALSE)
+
+
+```
+
+The reference data is then split into training and testing sets for SwarmTCR. The splitReferenceData function takes the positive reference data, the epitopes to include, the output path, the reference proportion, the train proportion, the test proportion, the number of folds for cross-validation, and (optionally) the negative proportion to include in the train/test split. If there are not enough negative references to meet the specified proportion for an epitope, all available negative references will be included. This function writes the formatted train, test, and reference data to the specified output path for each fold. 
+
+```{r split-reference-data}
+
+target.epitopes <- epitopes %>% pull(Epitope)
+
+splitReferenceData(pos.data = positive.reference, target.epitopes = target.epitopes, directory = out.path, ref.prop = ref.prop, train.prop = train.prop, test.prop = test.prop, n.folds = 25, neg.prop = neg.prop)
+
+# Or, use the negative data you generated
+splitReferenceData(pos.data = positive.reference, neg.data = negative.data, target.epitopes = target.epitopes, directory = neg.gen.out.path, ref.prop = ref.prop, train.prop = train.prop, test.prop = test.prop, n.folds = 25, neg.prop = neg.prop)
+
+```
+
+The makeClassifierReference function creates a reference file for SwarmTCR based on the positive reference data and the target epitopes. This is used in SwarmTCRClassify, after SwarmTCR pretraining, but is most easily generated at this step. 
+
+```{r prepare-classifier-reference}
+
+makeClassifierReference(data = positive.reference, epitopes = target.epitopes, directory = out.path)
+
+```
+
+To run SwarmTCR pretraining using the newly formatted data, copy each data directory to your SwarmTCR directory and run the following command:
+
+for f in ./*/; do cd $f; for fi in ./*/; do cd $fi; ../../../../../swarmTCR -r Reference.txt -i Train.txt -t Test.txt -1 val_TCRdist_out.txt -2 val_SwarmTCR_out.txt -n 20 -s 25 > refWeights.txt; cd ..; done; cd ..; done;
+
+Then, proceed with the SwarmTCR-results-processing.Rmd document to analyze performance and establish SwarmTCRClassify parameters using the pre-trained SwarmTCR model.

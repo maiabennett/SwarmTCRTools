@@ -1,0 +1,39 @@
+---
+title: SwarmTCR results processing"
+author: "Maia Bennett-Boehm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("../TCRPaired/util/library.R")
+source("../TCRPaired/util/processing.R")
+source("../TCRPaired/util/filtering.R")
+source("../TCRPaired/util/formatting.R")
+source("./util/data-inputs.R")
+source("./util/SwarmTCR-results.R")
+source("./util/plotting.R")
+library(rstudioapi)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# SwarmTCR results processing, analysis, and SwarmTCRClassify parameter optimization
+
+```{r set-variables}
+
+# Method to set the per-epitope CDR sequence reference weights for SwarmTCRClassify (mediod or best)
+refweights.method <- "mediod"
+
+# Optional threshold for precision (remove epitopes from further analysis if precision is below threshold)
+precision.threshold <- NULL
+
+# Method to set the per-epitope score thresholds for SwarmTCRClassify (precision, recall, f1, or fbeta)
+threshold.method <- "precision"
+
+# Set the path to the input data
+input.path <- "./reference-data/high-confidence/"
+
+# Set the path to the SwarmTCR results plots 
+out.path <- "./SwarmTCR-results/high-confidence/"
+
+```
