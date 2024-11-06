@@ -1,0 +1,15 @@
+FILE_NAME Epitope CDR1a CDR2a CDR2_5a CDR3a CDR1b CDR2b CDR2_5b CDR3b
+../reference-data/high-confidence/GILGFVFTL/GILGFVFTL_Classifier-Reference.txt GILGFVFTL 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/GLCTLVAML/GLCTLVAML_Classifier-Reference.txt GLCTLVAML 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/HPNGYKSLSTL/HPNGYKSLSTL_Classifier-Reference.txt HPNGYKSLSTL 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/KLVALGINAV/KLVALGINAV_Classifier-Reference.txt KLVALGINAV 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/NLVPMVATV/NLVPMVATV_Classifier-Reference.txt NLVPMVATV 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/QMMVKAGL/QMMVKAGL_Classifier-Reference.txt QMMVKAGL 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/QYIKWPWYI/QYIKWPWYI_Classifier-Reference.txt QYIKWPWYI 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/RFPLTFGWCF/RFPLTFGWCF_Classifier-Reference.txt RFPLTFGWCF 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/RPIIRPATL/RPIIRPATL_Classifier-Reference.txt RPIIRPATL 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/SPRWYFYYL/SPRWYFYYL_Classifier-Reference.txt SPRWYFYYL 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/TTDPSFLGRY/TTDPSFLGRY_Classifier-Reference.txt TTDPSFLGRY 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/VLFGLGFAI/VLFGLGFAI_Classifier-Reference.txt VLFGLGFAI 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/YLQPRTFLL/YLQPRTFLL_Classifier-Reference.txt YLQPRTFLL 0.333 0.333 0.333 1 0.333 0.333 0.333 1
+../reference-data/high-confidence/YVLDHLIVV/YVLDHLIVV_Classifier-Reference.txt YVLDHLIVV 0.333 0.333 0.333 1 0.333 0.333 0.333 1

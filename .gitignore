@@ -1,7 +1,15 @@
-prediction.R
+
+# Raw results files (TARed)
 Test.txt
 Train.txt
 Reference.txt
+refWeights.txt
+val_SwarmTCR_out.txt
+val_TCRdist_out.txt
+val_SwarmTCR_out.txt.scores
+ 
+# Old files
+prediction.R
 prediction-reference-processing.R
 experimental-data-processing.R
 prediction-results-processing.R

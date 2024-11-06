@@ -79,10 +79,14 @@ Optionally, negative reference data can be generated from a wider pool of refere
 
 ```{r prepare-negative-reference}
 
-# Here, we generate a total of 1,500 negative sequences per epitope in the positive dataset from a wider pool of reference data, excluding cross-reactive data
-n.negative <- 1500
+# Here, we generate a total of 500 negative sequences per epitope in the positive dataset from a wider pool of reference data, excluding cross-reactive data, to ensure a wide pool of negative data for SwarmTCR pretraining
+n.negative <- 500
 exclude.source <- "chan"
 target.epitopes <- epitopes %>% pull(Epitope)
+
+# We also exlude an overrepresented and poorly characterized epitope from this pool to avoid biasing the negative data
+negative.reference <- negative.reference %>% 
+    filter(Epitope != "KLGGALQAK")
 
 negative.data <- generateNegatives(negative.reference, n.negative, target.epitope = NULL, target.epitopes = target.epitopes, exclude.source = exclude.source, exclude.all.epitopes = FALSE)
 
@@ -93,7 +97,7 @@ negative.data <- negative.data %>%
         Epitope.species = True.epitope.species) %>%
     select(-c(True.epitope, True.epitope.gene, True.epitope.species))
 
-neg.gen.out.path <- "./reference-data/high-confidence-generated-negatives/"
+neg.gen.out.path <- "./reference-data/high-confidence-generated-negatives-2/"
 dir.create(neg.gen.out.path, showWarnings = FALSE, recursive = TRUE)
 write.csv(negative.data, paste0(neg.gen.out.path, "negative-reference-data.csv"), row.names = FALSE)
 
@@ -113,7 +117,7 @@ splitReferenceData(pos.data = positive.reference, neg.data = negative.data, targ
 
 ```
 
-The makeClassifierReference function creates a reference file for SwarmTCR based on the positive reference data and the target epitopes. This is used in SwarmTCRClassify, after SwarmTCR pretraining, but is most easily generated at this step. 
+The makeClassifierReference function creates a reference file for SwarmTCR based on the positive reference data and the target epitopes. This reference file is used in SwarmTCRClassify, but is most easily created at this stage.
 
 ```{r prepare-classifier-reference}
 
@@ -121,8 +125,9 @@ makeClassifierReference(data = positive.reference, epitopes = target.epitopes, d
 
 ```
 
-To run SwarmTCR pretraining using the newly formatted data, copy each data directory to your SwarmTCR directory and run the following command:
 
-for f in ./*/; do cd $f; for fi in ./*/; do cd $fi; ../../../../../swarmTCR -r Reference.txt -i Train.txt -t Test.txt -1 val_TCRdist_out.txt -2 val_SwarmTCR_out.txt -n 20 -s 25 > refWeights.txt; cd ..; done; cd ..; done;
+To run SwarmTCR pretraining using the newly formatted data, copy each reference data directory to your SwarmTCR directory and run the following command:
+
+`for f in ./*/; do cd $f; for fi in ./*/; do cd $fi; ../../../../../swarmTCR -r Reference.txt -i Train.txt -t Test.txt -1 val_TCRdist_out.txt -2 val_SwarmTCR_out.txt -n 20 -s 25 > refWeights.txt; cd ..; done; cd ..; done;`
 
 Then, proceed with the SwarmTCR-results-processing.Rmd document to analyze performance and establish SwarmTCRClassify parameters using the pre-trained SwarmTCR model.

@@ -1,0 +1,15 @@
+FILE_NAME Epitope CDR1a CDR2a CDR2_5a CDR3a CDR1b CDR2b CDR2_5b CDR3b
+../reference-data/high-confidence/GILGFVFTL/GILGFVFTL_Classifier-Reference.txt GILGFVFTL 0.707066 0 0 0 1 0 0.482797 1
+../reference-data/high-confidence/GLCTLVAML/GLCTLVAML_Classifier-Reference.txt GLCTLVAML 0.0864327 0.550129 0 0.517735 0 0.59088 0 1
+../reference-data/high-confidence/HPNGYKSLSTL/HPNGYKSLSTL_Classifier-Reference.txt HPNGYKSLSTL 0.185205 0.171303 0.271605 0.535416 0.00280487 0.933855 0 0.375026
+../reference-data/high-confidence/KLVALGINAV/KLVALGINAV_Classifier-Reference.txt KLVALGINAV 1 0.049398 0.634083 0.970325 0 0 0 0.0656054
+../reference-data/high-confidence/NLVPMVATV/NLVPMVATV_Classifier-Reference.txt NLVPMVATV 0.360076 0 0 1 0 0.285377 0 0.463063
+../reference-data/high-confidence/QMMVKAGL/QMMVKAGL_Classifier-Reference.txt QMMVKAGL 0 0.0384523 0 0 0.480096 1 0.517748 0
+../reference-data/high-confidence/QYIKWPWYI/QYIKWPWYI_Classifier-Reference.txt QYIKWPWYI 0 0 0 0 0.00879017 0.959652 1 0.0330912
+../reference-data/high-confidence/RFPLTFGWCF/RFPLTFGWCF_Classifier-Reference.txt RFPLTFGWCF 0.34197 1 0 0.680726 0 0.496738 0 0
+../reference-data/high-confidence/RPIIRPATL/RPIIRPATL_Classifier-Reference.txt RPIIRPATL 1 1 0.78219 0.277764 0.158215 0.380108 0 0.280722
+../reference-data/high-confidence/SPRWYFYYL/SPRWYFYYL_Classifier-Reference.txt SPRWYFYYL 1 1 0.95744 0.805799 0.810507 0.547116 0 0.742661
+../reference-data/high-confidence/TTDPSFLGRY/TTDPSFLGRY_Classifier-Reference.txt TTDPSFLGRY 0.296595 0 0 0.283852 1 1 0 0.391048
+../reference-data/high-confidence/VLFGLGFAI/VLFGLGFAI_Classifier-Reference.txt VLFGLGFAI 0 0.269182 0 1 0 0 0 0
+../reference-data/high-confidence/YLQPRTFLL/YLQPRTFLL_Classifier-Reference.txt YLQPRTFLL 0 0 0 0.446145 0 0.0264326 0 1
+../reference-data/high-confidence/YVLDHLIVV/YVLDHLIVV_Classifier-Reference.txt YVLDHLIVV 0.211261 1 1 1 0 0.170409 0 0

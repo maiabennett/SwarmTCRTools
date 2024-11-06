@@ -11,7 +11,7 @@ source("../TCRPaired/util/processing.R")
 source("../TCRPaired/util/filtering.R")
 source("../TCRPaired/util/formatting.R")
 source("./util/data-inputs.R")
-source("./util/SwarmTCR-results.R")
+source("./util/pretraining-results.R")
 source("./util/plotting.R")
 library(rstudioapi)
 knitr::opts_chunk$set(echo = TRUE)
@@ -19,21 +19,143 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # SwarmTCR results processing, analysis, and SwarmTCRClassify parameter optimization
 
+This document describes the steps to process SwarmTCR results, analyze the results, and optimize parameters for SwarmTCRClassify. The results should be in the form of a directory with subdirectories for each epitope and cross-validation fold containing the SwarmTCR results files. These results files include:
+
+- refWeights.txt: A file containing the per-epitope CDR sequence weights tested and finalized by *n* iterations of swarm learning (*n* = 20 by default). Also includes the final test performance (average precision) of the SwarmTCR model with these weights alongside the performance (average precision) of a base TCRdist weight approach (CDR3 upweighted 3x other CDR sequences).
+
+- val_SwarmTCR_out.txt: A file containing the precision and recall values of the SwarmTCR model for a given epitope and fold.
+ 
+- val_TCRdist_out.txt: A file containing the precision and recall values of the base TCRdist model (CDR3 upweighted 3x other CDR sequences) for a given epitope and fold.
+
+- val_SwarmTCR_out.txt.scores: A file containing the results of the SwarmTCR model on test data, including the `TCR_ID` of the nearest-neighbor match from training data, the binary label (0 = negative, 1 = positive), and the SwarmTCR distance score for each test receptor.
+
+
+First, a number of parameters need to be set for the SwarmTCR results processing. These include the method to set the per-epitope CDR sequence reference weights for SwarmTCRClassify (mediod or best), the optional threshold for precision (remove epitopes from further analysis if precision is below threshold), the method to set the per-epitope score thresholds for SwarmTCRClassify (precision, recall, f1, or fbeta), the path to the SwarmTCR results files, the path to the SwarmTCR results plots, the path to the reference data directory, and the path to be appended to the file paths within the refWeights.txt file used by SwarmTCRClassify.
+
 ```{r set-variables}
 
 # Method to set the per-epitope CDR sequence reference weights for SwarmTCRClassify (mediod or best)
 refweights.method <- "mediod"
 
 # Optional threshold for precision (remove epitopes from further analysis if precision is below threshold)
-precision.threshold <- NULL
+refweights.threshold <- NULL
 
 # Method to set the per-epitope score thresholds for SwarmTCRClassify (precision, recall, f1, or fbeta)
 threshold.method <- "precision"
 
-# Set the path to the input data
-input.path <- "./reference-data/high-confidence/"
+# Set the path to the SwarmTCR results files
+input.path <- "./pretraining-results/high-confidence/"
 
 # Set the path to the SwarmTCR results plots 
-out.path <- "./SwarmTCR-results/high-confidence/"
+plots.path <- "./pretraining-results/high-confidence/plots/"
+dir.create(plots.path, showWarnings = FALSE, recursive = TRUE)
+
+# Set the path to the reference data directory
+reference.path <- "./reference-data/high-confidence/"
+
+# Set the path to be appended to the file paths within the refWeights.txt file used by SwarmTCRClassify; requires knowledge of the directory structure of the reference data in the SwarmTCR + SwarmTCRClassify repository
+# Recommended structure is to have a directory 'reference-data' (plus any data subset paths such as 'high-confidence') with subdirectories for each epitope where SwarmTCRClassify will look for the reference data, and to have SwarmTCRClassify experimental data (formatted in experimental-preparation.Rmd) in a directory 'experimental-data' 
+append.path <- paste0(".", reference.path)
+
+# Load target epitope data
+epitopes <- read.csv(paste0(reference.path, "epitopes.csv"))
+target.epitopes <- epitopes %>% pull(Epitope)
 
 ```
+
+Then, the results produced in SwarmTCR pretraining can be imported and processed. The processSwarmTCRResults function processes the SwarmTCR results files and returns a list of dataframes containing the results from each file for all epitopes and folds.
+
+```{r process-results}
+
+pretraining.results <- processSwarmTCRResults(directory = input.path, epitopes = target.epitopes)
+
+ref.weights <- pretraining.results[["refweights"]]
+pr.swarmTCR <- pretraining.results[["pr.swarmTCR"]]
+pr.TCRdist <- pretraining.results[["pr.TCRdist"]]
+scores <- pretraining.results[["scores"]]
+
+```
+
+The performance of the SwarmTCR model can be visualized using precision-recall curves for each epitope, averaged across folds. The plotPrecisionRecall function plots the precision-recall curves for the SwarmTCR and TCRdist models for each epitope in the target epitope set. The function returns a ggplot object that can be saved as a .png file, and optionally saves PR AUC data to a .csv file at the specified path.
+
+```{r plot-performance}
+
+plotPrecisionRecall(pr.dfs = pr.swarmTCR, epitopes = target.epitopes, directory = paste0(plots.path, "SwarmTCR_"))
+ggsave(paste0(plots.path, "SwarmTCR-PR-curve.png"), plot, width = 15, height = 15)
+
+plotPrecisionRecall(pr.dfs = pr.TCRdist, epitopes = target.epitopes, directory = paste0(plots.path, "TCRdist_"))
+ggsave(paste0(plots.path, "TCRdist-PR-curve.png"), plot, width = 15, height = 15)
+
+```
+
+
+Two important processes are then performed on the results data: setting the per-epitope CDR sequence reference weights and setting the per-epitope score thresholds for SwarmTCRClassify. 
+
+The setRefWeights function sets the per-epitope CDR sequence reference weights for SwarmTCRClassify based on the method specified and writes these weights to a file in the specified directory. It returns a list of four dataframes: 
+
+1. All final CDR sequence weights for each epitope in the target epitope set (the result of all iterations of swarm learning in each fold).
+
+2. The set CDR sequence weights for each epitope in the target epitope set, automatically used to write the refWeights file for SwarmTCRClassify.
+
+3. The top-performing (based on average precision) CDR sequence weights for each epitope in the target epitope set. The top-performing weights can be manually set using the internal makeRefWeightsFile function, though this is not recommended to avoid overfitting.
+
+4. The final target epitope set, which only differs from the initial epitope set if a precision threshold is set and some epitopes are removed from further analysis due to poor performance in pretraining.
+
+Additionally, other reference weight approaches (commonly, fixed weights and TCRdist weights) can be tested in SwarmTCRClassify by assigning these values to separate reference weights dataframes. Once these dataframe(s) are created, the internal makeRefWeightsFile function is used to write the alternative reference weights to a file that can be read by SwarmTCRClassify.
+
+
+```{r set-ref-weights}
+
+swarm.ref.weights <- setRefWeights(refweights.dfs = ref.weights, epitopes.df = epitopes, directory = paste0(reference.path, "SwarmTCR_"), append.directory = append.path, method = refweights.method, threshold = refweights.threshold)
+
+datatable(swarm.ref.weights[["set.weights"]], extensions=c('Scroller'),
+    options = list(dom='t', scrollX=TRUE, deferRender=TRUE, scrollY=200, scroller=TRUE), 
+    caption="Epitope-specific CDR sequence weights set by SwarmTCR")
+
+tcr.ref.weights <- data.frame(FILE_NAME = paste0(append.path, epitopes$Epitope, "_Classifier-Reference.txt"), Epitope = epitopes$Epitope, CDR1a = 0.333, CDR2a = 0.333, CDR2_5a = 0.333, CDR3a = 1, CDR1b = 0.333, CDR2b = 0.333, CDR2_5b = 0.333, CDR3b = 1)
+
+makeRefWeightsFile(tcr.ref.weights, paste0(reference.path, "TCRdist_"), append.directory = append.path)
+
+fixed.ref.weights <- data.frame(FILE_NAME = paste0(append.path, epitopes$Epitope, "_Classifier-Reference.txt"), Epitope = epitopes$Epitope, CDR1a = 0.333, CDR2a = 0.333, CDR2_5a = 0.333, CDR3a = 1, CDR1b = 0.333, CDR2b = 0.333, CDR2_5b = 0.333, CDR3b = 1)
+
+makeRefWeightsFile(fixed.ref.weights, paste0(reference.path, "fixed_"), append.directory = append.path)
+
+```
+
+All weights can be plotted to visualize the distribution of weights across the CDR sequences for each epitope and fold.
+
+```{r plot-ref-weights}
+
+plotRefWeights(swarm.ref.weights[["all.weights"]], swarm.ref.weights[["set.weights"]])
+ggsave(paste0(plots.path, "SwarmTCR-refWeights.png"), width = 20, height = 10)
+
+```
+
+The setScoreThresholds function sets the per-epitope score thresholds for a 'positive' prediction in SwarmTCRClassify based on the method specified and writes these thresholds to a file in the specified directory. The thresholds are set based on the precision, recall, f1, or fbeta score of the SwarmTCR model for each epitope across all folds. 
+
+```{r set-thresholds}
+beta = 0.5
+score.thresholds <- setScoreThresholds(pr.dfs = pr.swarmTCR, scores.dfs = scores, epitopes = target.epitopes, directory = reference.path, method = threshold.method, beta = beta)
+
+```
+
+SwarmTCR pretraining scores and PR curves can be plotted with the established per-epitope thresholds to visualize the how well thresholds separate positive and negative data and represent the overall performance of the SwarmTCR model.
+
+```{r plot-thresholds}
+
+plotScores(scores.dfs = scores, epitopes = target.epitopes, thresholds = score.thresholds)
+ggsave(paste0(plots.path, "SwarmTCR-scores.png"), plot, width = 20, height = 10)
+
+
+plotPrecisionRecall(pr.dfs = pr.swarmTCR, epitopes = target.epitopes, directory = plots.path, thresholds = score.thresholds)
+ggsave(paste0(plots.path, "SwarmTCR-PR-curve-with-score-thresholds.png"), plot, width = 15, height = 15)
+
+
+```
+
+
+To run SwarmTCRClassify using the newly set reference weights and score thresholds, copy the reference data directory to your SwarmTCR directory. Then, process your experimental data (receptors to predict binding affinity for) in experimental-preparation.Rmd, copy the experimental data directory to your SwarmTCR directory, and run the following command from inside the experimental directory:
+
+`for f in ./*_CDRs.txt; do ../../swarmTCRClassify -w ../reference-data/refWeights.txt -i $f; done;`
+
+Then, proceed with the SwarmTCRClassify-results-processing.Rmd document to analyze performance and establish SwarmTCRClassify parameters using the pre-trained SwarmTCR model.
