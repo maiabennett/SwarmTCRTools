@@ -13,3 +13,15 @@ prediction.R
 prediction-reference-processing.R
 experimental-data-processing.R
 prediction-results-processing.R
+
+# Testing files
+high-confidence-generated-negatives-old/
+high-confidence-generated-negatives-no-KLG/
+
+# Confidential experimental data files
+lc-cd4-cd8_paired*
+lc-cd8_paired*
+mecfs-cd4-cd8_paired*
+mecfs-cd8_paired*
+SwarmTCR-results.csv
+TCRdist-results.csv

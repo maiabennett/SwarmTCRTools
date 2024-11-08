@@ -84,10 +84,6 @@ n.negative <- 500
 exclude.source <- "chan"
 target.epitopes <- epitopes %>% pull(Epitope)
 
-# We also exlude an overrepresented and poorly characterized epitope from this pool to avoid biasing the negative data
-negative.reference <- negative.reference %>% 
-    filter(Epitope != "KLGGALQAK")
-
 negative.data <- generateNegatives(negative.reference, n.negative, target.epitope = NULL, target.epitopes = target.epitopes, exclude.source = exclude.source, exclude.all.epitopes = FALSE)
 
 # The negative data generater assigns a decoy epitope, gene, and species to the receptors, which is not needed for SwarmTCR
@@ -97,7 +93,7 @@ negative.data <- negative.data %>%
         Epitope.species = True.epitope.species) %>%
     select(-c(True.epitope, True.epitope.gene, True.epitope.species))
 
-neg.gen.out.path <- "./reference-data/high-confidence-generated-negatives-2/"
+neg.gen.out.path <- "./reference-data/high-confidence-generated-negatives/"
 dir.create(neg.gen.out.path, showWarnings = FALSE, recursive = TRUE)
 write.csv(negative.data, paste0(neg.gen.out.path, "negative-reference-data.csv"), row.names = FALSE)
 
@@ -122,6 +118,8 @@ The makeClassifierReference function creates a reference file for SwarmTCR based
 ```{r prepare-classifier-reference}
 
 makeClassifierReference(data = positive.reference, epitopes = target.epitopes, directory = out.path)
+
+makeClassifierReference(data = positive.reference, epitopes = target.epitopes, directory = neg.gen.out.path)
 
 ```
 

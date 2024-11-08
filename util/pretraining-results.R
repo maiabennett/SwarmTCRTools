@@ -164,6 +164,7 @@ setRefWeights <- function(refweights.dfs, epitopes.df, directory = "./reference-
 
   # Return reference weights results dataframes list (set refWeights, all refWeights, valid epitopes)
   results <- list()
+  results[["all.weights"]] <- all.weights
   results[["set.weights"]] <- set.weights
   results[["top.weights"]] <- top.weights
   results[["final.epitopes"]] <- epitopes.df
@@ -304,3 +305,38 @@ getScoreFbeta <- function(pr, scores, epitope, beta) {
   return(data.frame(Epitope = epitope, Fbeta = fbeta, F1 = F1, Precision = precision, Recall = recall, Threshold = threshold))
 }
 
+
+getPRAUC <- function(pr.dfs, epitopes) {
+
+  pr.long <- data.frame()
+  for (epitope in epitopes) {
+    pr <- pr.dfs[[epitope]]
+    pr <- pr %>% 
+      mutate(Epitope = epitope)
+    pr.long <- rbind(pr.long, pr)
+  }
+
+  avg.pr.auc <- data.frame()
+  per.fold.pr.auc <- data.frame()
+  for (epitope in epitopes) {
+    pr <- pr.long %>% filter(Epitope == epitope)
+    ord <- order(pr$Recall)
+    recall <- pr$Recall[ord]
+    precision <- pr$Precision[ord]
+    avg.pr.auc <- rbind(avg.pr.auc, data.frame(
+        Epitope = epitope, 
+        PR_AUC = sum(diff(recall) * (precision[-length(precision)] + precision[-1]) / 2)))
+    for (run in unique(pr$Run)) {
+      pr.run <- pr %>% filter(Run == run)
+      ord <- order(pr.run$Recall)
+      recall <- pr.run$Recall[ord]
+      precision <- pr.run$Precision[ord]
+      per.fold.pr.auc <- rbind(per.fold.pr.auc, data.frame(
+        Epitope = epitope,
+        Run = run,
+        PR_AUC = sum(diff(recall) * (precision[-length(precision)] + precision[-1]) / 2)))
+    }
+  }
+
+  return(list("average" = avg.pr.auc, "per.fold" = per.fold.pr.auc))
+}

@@ -1,0 +1,52 @@
+---
+title: "Experimental data preparation for SwarmTCR"
+author: "Maia Bennett-Boehm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Experimental data preparation for SwarmTCR
+
+This document describes the steps to prepare experimental data for use in SwarmTCRClassify. The experimental data should be in the form of a data frame with columns for the following variables:
+
+- Clone ID (unique identifier for each receptor)
+
+- CDR sequences (at least CDR1a, CDR2a, CDR3a, CDR1b, CDR2b, CDR3b)
+
+- V and J gene segments (AV, AJ, BV, BJ)
+
+```{r setup, include=FALSE}
+source("../TCRPaired/util/library.R")
+source("../TCRPaired/util/processing.R")
+source("../TCRPaired/util/filtering.R")
+source("../TCRPaired/util/formatting.R")
+source("../TCRPaired/util/aligning.R")
+source("./util/data-inputs.R")
+library(rstudioapi)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The process for preparing experimental data is quite simple. The data should be placed in a single experimental data directory. This data is imported, formatted for SwarmTCRClassify (including the addition of CDR2.5 sequence if not already present), and saved as a space-delimited text file.
+
+```{r set-variables}
+
+experimental.path <- "./experimental-data/"
+experimental.files <- list.files(experimental.path, full.names = TRUE)
+
+```
+
+
+```{r format-data}
+
+for (file in experimental.files) {
+    # Import experimental data and add CDR2.5 if not already present
+    experimental.data <- import(file) %>% 
+        getCDRSeq(alleles = TRUE) 
+    experimental.data <- experimental.data %>% 
+        formatSwarmTCR()
+    file.name <- sub("\\.[[:alnum:]]+$", "", file)
+    file.name <- paste0(file.name, "_CDRs.txt")
+    write_delim(experimental.data, file.name)
+}
+
+```

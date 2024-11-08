@@ -21,7 +21,7 @@ plotRefWeights <- function(all.weights, set.weights) {
   return(plot)
 }
 
-plotPrecisionRecall <- function(pr.dfs, epitopes, directory = NULL, thresholds = NULL) {
+plotPrecisionRecall <- function(pr.dfs, epitopes, thresholds = NULL) {
 
   pr.long <- data.frame()
   for (epitope in epitopes) {
@@ -47,10 +47,6 @@ plotPrecisionRecall <- function(pr.dfs, epitopes, directory = NULL, thresholds =
         PR_AUC = sum(diff(recall) * (precision[-length(precision)] + precision[-1]) / 2)))
   }
 
-  if (!is.null(directory)) {
-    write.csv(pr.auc, paste0(directory, "pr-auc.csv"), row.names = FALSE)
-  }
-
   average.pr <- average.pr %>% 
     mutate(Epitope = factor(Epitope, levels = unique(average.pr$Epitope), labels = paste0(unique(average.pr$Epitope), "\nPR AUC: ", pr.auc$PR_AUC %>% round(3))))
 
@@ -59,7 +55,7 @@ plotPrecisionRecall <- function(pr.dfs, epitopes, directory = NULL, thresholds =
     labs(title = "Average Precision-Recall Curve", x = "Recall", y = "Precision") +
     facet_wrap(~Epitope) +
     theme_minimal() +
-    theme(legend.position = "none") 
+    theme(legend.position = "none")
 
   if (!is.null(thresholds)) {
     thresholds <- thresholds %>% 
@@ -69,6 +65,65 @@ plotPrecisionRecall <- function(pr.dfs, epitopes, directory = NULL, thresholds =
     plot <- plot +
       geom_point(data = thresholds, aes(x = Recall, y = Precision), color = "black", size = 5) +
       geom_text(data = thresholds, aes(x = Recall, y = Precision, label = label), color = "black", hjust = 0, vjust = 0)
+  }
+
+  return(plot)
+}
+
+comparePrecisionRecall <- function(pr.dfs, epitopes, color = "Method") {
+  pr.long <- data.frame()
+  for (epitope in epitopes) {
+    pr <- pr.dfs[[epitope]]
+    pr <- pr %>% 
+      mutate(Epitope = epitope)
+    pr.long <- rbind(pr.long, pr)
+  }
+
+  average.pr <- pr.long %>%
+    group_by(Epitope, Recall, !!sym(color)) %>%
+    summarize(Precision = mean(Precision)) %>%
+    ungroup()
+
+  color.values <- unique(pr.long[[color]])
+
+  pr.auc = data.frame()
+  for (epitope in epitopes) {
+    for (value in color.values) {
+      pr <- pr.long %>% filter(Epitope == epitope, !!sym(color) == value)
+      ord <- order(pr$Recall)
+      recall <- pr$Recall[ord]
+      precision <- pr$Precision[ord]
+      pr.auc <- rbind(pr.auc, data.frame(
+          Epitope = epitope, 
+          Method = value,
+          PR_AUC = sum(diff(recall) * (precision[-length(precision)] + precision[-1]) / 2)))
+    }
+  }
+
+    generate.labels <- function(epitope, color.values, pr.auc, color) {
+    labels <- sapply(color.values, function(value) {
+      auc_value <- pr.auc %>% filter(Epitope == epitope, !!sym(color) == value) %>% pull(PR_AUC) %>% round(3)
+      paste0(value, " PR AUC: ", auc_value)
+    }, USE.NAMES = FALSE)
+    return(paste(labels, collapse = "\n"))
+  }
+
+  average.pr <- average.pr %>% 
+    mutate(Epitope = factor(Epitope, levels = unique(average.pr$Epitope), 
+      labels = sapply(unique(average.pr$Epitope), function(epitope) {
+        paste0(epitope, "\n", generate.labels(epitope, color.values, pr.auc, color))
+      })))
+
+  plot <- ggplot(average.pr, aes(x = Recall, y = Precision, color = !!sym(color))) +
+    geom_smooth(method = "loess", se = TRUE) +
+    labs(title = "Average Precision-Recall Curve", x = "Recall", y = "Precision") +
+    facet_wrap(~Epitope) +
+    theme_minimal()  
+
+
+  if (color == "Epitope") {
+    plot <- plot +
+      theme(legend.position = "none")
   }
 
   return(plot)
@@ -119,4 +174,23 @@ plotScores <- function(scores.dfs, epitopes, thresholds = NULL, fill = "Flag", l
   }
 
   return(plot)
+}
+
+plotPRAUC <- function(avg.pr.auc, per.fold.pr.auc, fill = "Epitope") {
+
+  plot <- ggplot(per.fold.pr.auc, aes(x = Epitope, y = PR_AUC, fill = !!sym(fill))) +
+    geom_boxplot()  +
+    labs(title = "PR AUC",
+         x = "Epitope",
+         y = "PR AUC") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  if (fill == "Epitope") {
+    plot <- plot +
+      theme(legend.position = "none") +
+    geom_point(data = avg.pr.auc, aes(x = Epitope, y = PR_AUC), color = "black", shape = 8)
+  }
+
+  return(plot)
+
 }

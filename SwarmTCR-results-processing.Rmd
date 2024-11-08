@@ -41,7 +41,7 @@ refweights.method <- "mediod"
 refweights.threshold <- NULL
 
 # Method to set the per-epitope score thresholds for SwarmTCRClassify (precision, recall, f1, or fbeta)
-threshold.method <- "precision"
+threshold.method <- "fbeta"
 
 # Set the path to the SwarmTCR results files
 input.path <- "./pretraining-results/high-confidence/"
@@ -80,11 +80,48 @@ The performance of the SwarmTCR model can be visualized using precision-recall c
 
 ```{r plot-performance}
 
-plotPrecisionRecall(pr.dfs = pr.swarmTCR, epitopes = target.epitopes, directory = paste0(plots.path, "SwarmTCR_"))
-ggsave(paste0(plots.path, "SwarmTCR-PR-curve.png"), plot, width = 15, height = 15)
+# Average and per-fold AUC
+pr.auc.swarmTCR <- getPRAUC(pr.dfs = pr.swarmTCR, epitopes = target.epitopes)
+avg.pr.auc.swarmTCR <- pr.auc.swarmTCR[["average"]] %>% distinct(Epitope, .keep_all = TRUE)
+per.fold.pr.auc.swarmTCR <- pr.auc.swarmTCR[["per.fold"]]
+write.csv(avg.pr.auc.swarmTCR, paste0(plots.path, "SwarmTCR-average-PR-AUC.csv"), row.names = FALSE)
+write.csv(per.fold.pr.auc.swarmTCR, paste0(plots.path, "SwarmTCR-per-fold-PR-AUC.csv"), row.names = FALSE)
 
-plotPrecisionRecall(pr.dfs = pr.TCRdist, epitopes = target.epitopes, directory = paste0(plots.path, "TCRdist_"))
-ggsave(paste0(plots.path, "TCRdist-PR-curve.png"), plot, width = 15, height = 15)
+pr.auc.TCRdist <- getPRAUC(pr.dfs = pr.TCRdist, epitopes = target.epitopes)
+avg.pr.auc.TCRdist <- pr.auc.TCRdist[["average"]] %>% distinct(Epitope, .keep_all = TRUE)
+per.fold.pr.auc.TCRdist <- pr.auc.TCRdist[["per.fold"]]
+write.csv(avg.pr.auc.TCRdist, paste0(plots.path, "TCRdist-average-PR-AUC.csv"), row.names = FALSE)
+write.csv(per.fold.pr.auc.TCRdist, paste0(plots.path, "TCRdist-per-fold-PR-AUC.csv"), row.names = FALSE)
+
+# PR curves
+plotPrecisionRecall(pr.dfs = pr.swarmTCR, epitopes = target.epitopes)
+ggsave(paste0(plots.path, "SwarmTCR-PR-curve.png"), width = 15, height = 15)
+
+plotPrecisionRecall(pr.dfs = pr.TCRdist, epitopes = target.epitopes)
+ggsave(paste0(plots.path, "TCRdist-PR-curve.png"), width = 15, height = 15)
+
+pr.combined <- list()
+for (epitope in target.epitopes) {
+    pr.df <- bind_rows(pr.swarmTCR[[epitope]] %>% mutate(Method = "SwarmTCR"), 
+        pr.TCRdist[[epitope]] %>% mutate(Method = "TCRdist")) 
+    pr.combined[[epitope]] <- pr.df
+}
+comparePrecisionRecall(pr.df = pr.combined, epitopes = target.epitopes, color = "Method")
+ggsave(paste0(plots.path, "SwarmTCR-vs-TCRdist-PR-curve.png"), width = 15, height = 15)
+
+# Box plots of per-fold and average AUC
+plotPRAUC(avg.pr.auc.swarmTCR, per.fold.pr.auc.swarmTCR)
+ggsave(paste0(plots.path, "SwarmTCR-PR-AUC.png"), plot, width = 15, height = 15)
+
+plotPRAUC(avg.pr.auc.TCRdist, per.fold.pr.auc.TCRdist)
+ggsave(paste0(plots.path, "TCRdist-PR-AUC.png"), width = 15, height = 15)
+
+avg.pr.auc.combined <- bind_rows(avg.pr.auc.swarmTCR %>% mutate(Method = "SwarmTCR"), 
+    avg.pr.auc.TCRdist %>% mutate(Method = "TCRdist"))
+per.fold.pr.auc.combined <- bind_rows(per.fold.pr.auc.swarmTCR %>% mutate(Method = "SwarmTCR"),
+    per.fold.pr.auc.TCRdist %>% mutate(Method = "TCRdist"))
+plotPRAUC(avg.pr.auc.combined, per.fold.pr.auc.combined, fill = "Method")
+ggsave(paste0(plots.path, "SwarmTCR-vs-TCRdist-PR-AUC.png"), width = 15, height = 15)
 
 ```
 
@@ -137,18 +174,22 @@ The setScoreThresholds function sets the per-epitope score thresholds for a 'pos
 beta = 0.5
 score.thresholds <- setScoreThresholds(pr.dfs = pr.swarmTCR, scores.dfs = scores, epitopes = target.epitopes, directory = reference.path, method = threshold.method, beta = beta)
 
+datatable(score.thresholds, , extensions=c('Scroller'),
+    options = list(dom='t', scrollX=TRUE, deferRender=TRUE, scrollY=200, scroller=TRUE), 
+    caption=paste0("Epitope-specific score thresholds set by SwarmTCR", " (using ", threshold.method, ")"))
+
 ```
 
-SwarmTCR pretraining scores and PR curves can be plotted with the established per-epitope thresholds to visualize the how well thresholds separate positive and negative data and represent the overall performance of the SwarmTCR model.
+SwarmTCR pretraining scores and PR curves can be plotted with the established per-epitope thresholds to visualize the how well thresholds separate positive and negative data and represent the overall performance of the SwarmTCR model. 
 
 ```{r plot-thresholds}
 
 plotScores(scores.dfs = scores, epitopes = target.epitopes, thresholds = score.thresholds)
-ggsave(paste0(plots.path, "SwarmTCR-scores.png"), plot, width = 20, height = 10)
+ggsave(paste0(plots.path, "SwarmTCR-scores.png"), width = 20, height = 10)
 
 
-plotPrecisionRecall(pr.dfs = pr.swarmTCR, epitopes = target.epitopes, directory = plots.path, thresholds = score.thresholds)
-ggsave(paste0(plots.path, "SwarmTCR-PR-curve-with-score-thresholds.png"), plot, width = 15, height = 15)
+plotPrecisionRecall(pr.dfs = pr.swarmTCR, epitopes = target.epitopes, thresholds = score.thresholds)
+ggsave(paste0(plots.path, "SwarmTCR-PR-curve-with-score-thresholds.png"), width = 15, height = 15)
 
 
 ```
@@ -156,6 +197,10 @@ ggsave(paste0(plots.path, "SwarmTCR-PR-curve-with-score-thresholds.png"), plot, 
 
 To run SwarmTCRClassify using the newly set reference weights and score thresholds, copy the reference data directory to your SwarmTCR directory. Then, process your experimental data (receptors to predict binding affinity for) in experimental-preparation.Rmd, copy the experimental data directory to your SwarmTCR directory, and run the following command from inside the experimental directory:
 
-`for f in ./*_CDRs.txt; do ../../swarmTCRClassify -w ../reference-data/refWeights.txt -i $f; done;`
+`for f in ./*_CDRs.txt; do <path to>/swarmTCRClassify -w <path to>/reference-data/SwarmTCR_refWeights.txt -i $f > $f.SwarmTCR.results; done;`
 
-Then, proceed with the SwarmTCRClassify-results-processing.Rmd document to analyze performance and establish SwarmTCRClassify parameters using the pre-trained SwarmTCR model.
+To run SwarmTCRClassify using the TCRdist reference weights, run the following command from inside the experimental directory:
+
+`for f in ./*_CDRs.txt; do <path to>/swarmTCRClassify -w <path to>/reference-data/TCRdist_refWeights.txt -i $f > $f.TCRdist.results; done;`
+
+Ensure to separate out these files into appropriate subdirectories based on reference data subsets as needed.Then, proceed with the SwarmTCRClassify-results-processing.Rmd document to analyze performance and establish SwarmTCRClassify parameters using the pre-trained SwarmTCR model.

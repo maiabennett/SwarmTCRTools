@@ -1,0 +1,132 @@
+---
+title: SwarmTCRClassify results processing"
+author: "Maia Bennett-Boehm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# SwarmTCRClassify results processing
+
+This script processes the results of SwarmTCRClassify and (optionally) SwarmTCRClassify with TCRdist weights. It reads in the results files, joins them with the full receptor data, and thresholds the results. The results are then written to files in the experimental-data/high-confidence directory.
+
+```{r setup, include=FALSE}
+source("../TCRPaired/util/library.R")
+source("../TCRPaired/util/processing.R")
+source("../TCRPaired/util/filtering.R")
+source("../TCRPaired/util/formatting.R")
+source("./util/data-inputs.R")
+source("./util/classifier-results.R")
+source("./util/plotting.R")
+library(rstudioapi)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+First, set the variables for the script. The experimental results path is the directory where the results files are stored. The script will read in all files in this directory that end in ".SwarmTCR.results" or ".TCRdist.results". The full files are the initial files with full receptor data. The prefix is used to merge results columns if multiple reference sets were used. The reference path is the directory where the threshold data is stored. The SwarmTCR threshold file is read in, and the fixed threshold for TCRdist is set.
+
+```{r set-variables}
+
+experimental.results.path <- "./experimental-data/high-confidence-generated-negatives/"
+
+# Results files from SwarmTCRClassify
+swarmTCR.results.files <- list.files(experimental.results.path, pattern = ".SwarmTCR.results", full.names = TRUE)
+
+# Results files from SwarmTCRClassify using TCRdist weights, if ran
+TCRdist.results.files <- list.files(experimental.results.path, pattern = ".TCRdist.results", full.names = TRUE)
+
+# Initial files with full receptor data
+experimental.path <- "./experimental-data/"
+full.files <- list.files(experimental.path, pattern = ".csv", full.names = TRUE)
+
+# Prefix for merged results columns (e.g., if results are obtained using multiple reference sets)
+prefix = "hc."
+
+# Reference path (for threshold dataframe)
+reference.path <- "./reference-data/high-confidence-generated-negatives/"
+
+# SwarmTCR threshold file
+swarmTCR.thresholds <- read.csv(paste0(reference.path, "scoreThresholds.csv"))
+
+# Fixed threshold for TCRdist
+TCRdist.threshold <- -35
+
+```
+
+
+Using the functions defined in the processing.R script, the results files are read in, processed, and written to a master file. The results are then joined with the full receptor data and written to files with the source name and "-predicted" appended. 
+
+```{r process-results}
+
+swarmTCR.results <- data.frame()
+# Process SwarmTCR results into one master file, adding source from filename (without path or file type)
+for (file in swarmTCR.results.files) {
+    results <- processSwarmClassify(file, cdrs.path = experimental.path)
+    swarmTCR.results <- rbind(swarmTCR.results, results)
+}   
+
+write.csv(swarmTCR.results, paste0(experimental.results.path, "SwarmTCR-results.csv"), row.names = FALSE)
+
+TCRdist.results <- data.frame()
+# Process TCRdist results into one master file, adding source from filename (without path or file type)
+for (file in TCRdist.results.files) {
+    results <- processSwarmClassify(file, cdrs.path = experimental.path)
+    TCRdist.results <- rbind(TCRdist.results, results)
+}
+
+write.csv(TCRdist.results, paste0(experimental.results.path, "TCRdist-results.csv"), row.names = FALSE)
+
+```
+
+```{r join-results}
+
+# Join SwarmTCR results with full receptor data
+# SwarmTCR removes redundant CDR sequences, so the join is done on all CDR sequence components rather than TCR_ID
+source.list <- unique(swarmTCR.results$Source)
+
+for (source in source.list) {
+    results <- swarmTCR.results %>% 
+        filter(Source == source)
+    full.data <- read.csv(paste0(experimental.path, source, ".csv"))
+    full.data <- mergeSwarmClassify(results, full.data, prefix = prefix)
+    write.csv(full.data, paste0(experimental.results.path, source, "-predicted.csv"), row.names = FALSE)
+}
+
+# Join TCRdist results with full receptor data
+for (source in source.list) {
+    results <- TCRdist.results %>% 
+        filter(Source == source)
+    full.data <- read.csv(paste0(experimental.path, source, ".csv"))
+    full.data <- mergeSwarmClassify(results, full.data, prefix = prefix)
+    write.csv(full.data, paste0(experimental.results.path, source, "-predicted.csv"), row.names = FALSE)
+}
+
+```
+
+
+Threshold functions are used to threshold the results based on a dataframe of epitope-specific thresholds set with SwarmTCR pretraining or a fixed threshold, and the thresholded results are written to files with the source name and "-thresholded" appended. The threshold functions can also be used to filter the results further: here, they are subsetted to only those that are close matches (sequence distance < 5) or perfect matches (sequence distance 0), and these results are written to files with the source name and "-close-match" or "-perfect-match" appended.
+
+TCRdist sequence weight approaches are likely to have fairly consistent scoring, as all CDR sequence segments are given a weight greater than 0. SwarmTCR sequence weights are more highly variable depending on the reference set and swarm learning performance; as such, some CDR segments may be given no weight in pretraining results. As such, predicted scores from SwarmTCRClassify must be considered carefully in context.
+
+```{r threshold-results}
+
+threshold.swarmTCR <- thresholdSwarmClassify(swarmTCR.results, swarmTCR.thresholds)
+threshold.TCRdist <- thresholdByDist(TCRdist.results, TCRdist.threshold)
+
+write.csv(threshold.swarmTCR, paste0(experimental.results.path, "SwarmTCR-thresholded.csv"), row.names = FALSE)
+write.csv(threshold.TCRdist, paste0(experimental.results.path, "TCRdist-thresholded.csv"), row.names = FALSE)
+
+close.match.swarmTCR <- thresholdByDist(swarmTCR.results, -5)
+close.match.TCRdist <- thresholdByDist(TCRdist.results, -5)
+
+write.csv(close.match.swarmTCR, paste0(experimental.results.path, "SwarmTCR-close-match.csv"), row.names = FALSE)
+write.csv(close.match.TCRdist, paste0(experimental.results.path, "TCRdist-close-match.csv"), row.names = FALSE)
+
+perfect.match.swarmTCR <- thresholdByDist(swarmTCR.results, 0)
+perfect.match.TCRdist <- thresholdByDist(TCRdist.results, 0)
+
+write.csv(perfect.match.swarmTCR, paste0(experimental.results.path, "SwarmTCR-perfect-match.csv"), row.names = FALSE)
+write.csv(perfect.match.TCRdist, paste0(experimental.results.path, "TCRdist-perfect-match.csv"), row.names = FALSE)
+
+```
+
+This concludes the utility of SwarmTCRTools. The results files are now thresholded and ready for further in-depth analysis of predicted epitopes, epitope species, sequence similarity, and more.

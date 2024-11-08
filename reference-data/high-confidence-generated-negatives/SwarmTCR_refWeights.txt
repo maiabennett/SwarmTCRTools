@@ -1,0 +1,15 @@
+FILE_NAME Epitope CDR1a CDR2a CDR2_5a CDR3a CDR1b CDR2b CDR2_5b CDR3b
+../reference-data/high-confidence-generated-negatives/GILGFVFTL/GILGFVFTL_Classifier-Reference.txt GILGFVFTL 0.137564 0.236435 0 0.179449 0.894327 0.745331 0.245821 0.985521
+../reference-data/high-confidence-generated-negatives/GLCTLVAML/GLCTLVAML_Classifier-Reference.txt GLCTLVAML 0 0 1 1 0.117459 1 1 0.574918
+../reference-data/high-confidence-generated-negatives/HPNGYKSLSTL/HPNGYKSLSTL_Classifier-Reference.txt HPNGYKSLSTL 0 0 0.743706 1 0.786501 0 0.0396236 0.727258
+../reference-data/high-confidence-generated-negatives/KLVALGINAV/KLVALGINAV_Classifier-Reference.txt KLVALGINAV 1 0 0.673527 1 0 0 0.0900503 0
+../reference-data/high-confidence-generated-negatives/NLVPMVATV/NLVPMVATV_Classifier-Reference.txt NLVPMVATV 1 0 0 1 0 0.594538 0 0.404234
+../reference-data/high-confidence-generated-negatives/QMMVKAGL/QMMVKAGL_Classifier-Reference.txt QMMVKAGL 0 0.607707 0 0 0 1 0 0.0889026
+../reference-data/high-confidence-generated-negatives/QYIKWPWYI/QYIKWPWYI_Classifier-Reference.txt QYIKWPWYI 0 0 0 0.982437 1 1 1 1
+../reference-data/high-confidence-generated-negatives/RFPLTFGWCF/RFPLTFGWCF_Classifier-Reference.txt RFPLTFGWCF 0.786267 0 0 1 0 0.498109 0 0
+../reference-data/high-confidence-generated-negatives/RPIIRPATL/RPIIRPATL_Classifier-Reference.txt RPIIRPATL 1 0.981889 0.933527 0.504294 0 0.901565 0 0.303594
+../reference-data/high-confidence-generated-negatives/SPRWYFYYL/SPRWYFYYL_Classifier-Reference.txt SPRWYFYYL 1 1 0.209987 0.631472 1 1 0.0440808 0.294581
+../reference-data/high-confidence-generated-negatives/TTDPSFLGRY/TTDPSFLGRY_Classifier-Reference.txt TTDPSFLGRY 0.776386 0 0.382055 0 1 1 0.895281 0.742728
+../reference-data/high-confidence-generated-negatives/VLFGLGFAI/VLFGLGFAI_Classifier-Reference.txt VLFGLGFAI 0.362322 0.986085 0.527086 0.666342 0.687837 0.435082 0.506975 1
+../reference-data/high-confidence-generated-negatives/YLQPRTFLL/YLQPRTFLL_Classifier-Reference.txt YLQPRTFLL 0 0 0.00630518 0.240667 0 0 0 1
+../reference-data/high-confidence-generated-negatives/YVLDHLIVV/YVLDHLIVV_Classifier-Reference.txt YVLDHLIVV 1 0.4338 0.904087 1 0.36396 0.385235 0.284073 0
