@@ -1,6 +1,6 @@
 # SwarmTCRTools
 
-SwarmTCRTools is a collection of R scripts intended to facilitate automated analysis of TCR sequence binding prediction with SwarmTCR and SwarmTCRClassify. 
+SwarmTCRTools is a collection of R scripts intended to facilitate automated analysis of TCR sequence binding prediction with [SwarmTCR and SwarmTCRClassify](https://github.com/thecodingdoc/SwarmTCR). 
 
 ## Workflow Overview
 
